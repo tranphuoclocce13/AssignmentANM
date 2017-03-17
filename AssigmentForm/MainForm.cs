@@ -142,7 +142,7 @@ namespace AssigmentForm
 
             if (receiveBytes > 0)
             {
-                string receiveMessage = Encoding.Unicode.GetString(receiveData);
+                string receiveMessage = Encoding.UTF8.GetString(receiveData);
                 if (receiveMessage.Substring(0,receiveBytes) == "DISCONNECTPLEASE12345")
                 {
                     client.Close();
@@ -158,12 +158,14 @@ namespace AssigmentForm
         private void sendingDaTa()
         {
             string writeMessage = tbMessage.Text;
+            
             try
             {
                 if (writeMessage.Length > 0)
                 {
-                    byte[] writeData = Encoding.Unicode.GetBytes(writeMessage);
-                    netStream.Write(writeData, 0, writeMessage.Length);
+                    byte[] writeData = Encoding.UTF8.GetBytes(writeMessage);
+                    int sendingSize = (writeData.Length > BUFFER_SIZE) ? BUFFER_SIZE : writeData.Length;
+                    netStream.Write(writeData, 0, sendingSize);
                     writeMessage = "You: " + writeMessage;
                     addTextView(writeMessage);
                     tbMessage.Clear();
@@ -243,6 +245,7 @@ namespace AssigmentForm
             {
                 Console.WriteLine(ex.Message);
                 announceDisconnect();
+                chatClientThread.Abort();
                 return;
             }
         }
@@ -264,6 +267,7 @@ namespace AssigmentForm
             }
 
             chatClientThread = new Thread(sendTCP);
+            chatClientThread.IsBackground = true;
             chatClientThread.Start();
         }
 

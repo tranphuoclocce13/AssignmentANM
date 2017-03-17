@@ -42,7 +42,7 @@
             this.tbIPAddress.Name = "tbIPAddress";
             this.tbIPAddress.Size = new System.Drawing.Size(176, 20);
             this.tbIPAddress.TabIndex = 0;
-            this.tbIPAddress.Text = "127.0.0.1";
+            this.tbIPAddress.Text = "192.168.1.9";
             // 
             // tbPort
             // 
