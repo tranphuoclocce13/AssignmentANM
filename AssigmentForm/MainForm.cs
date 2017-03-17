@@ -47,7 +47,7 @@ namespace AssigmentForm
             /*Set T is Back Ground to Terminal Program when Press X button*/
 
             string ipAddress = Dns.GetHostByName(Dns.GetHostName()).AddressList[0].ToString();
-            addTextView("Server started, IP Server = " + ipAddress);
+            this.Text += " - " + ipAddress;
         }
 
         public void startTransferServer()
