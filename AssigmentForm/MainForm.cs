@@ -21,6 +21,7 @@ namespace AssigmentForm
         private Thread transferServerThread = null;
         private Thread transferClientThread = null;
         private const int BUFFER_SIZE = 1024;
+        private const string END_CONNECTION_STRING = "DISCONNECTPLEASE12345";
         private int serverPort = 19999;
         private int transferPort = 29999;
         private string IPConnect = null;
@@ -143,7 +144,7 @@ namespace AssigmentForm
             if (receiveBytes > 0)
             {
                 string receiveMessage = Encoding.UTF8.GetString(receiveData);
-                if (receiveMessage == "DISCONNECTPLEASE12345")
+                if (receiveMessage.Substring(0, END_CONNECTION_STRING.Length) == END_CONNECTION_STRING)
                 {
                     client.Close();
                     return;
@@ -299,7 +300,7 @@ namespace AssigmentForm
         {
             try
             {
-                byte[] writeData = Encoding.ASCII.GetBytes("DISCONNECTPLEASE12345");
+                byte[] writeData = Encoding.ASCII.GetBytes(END_CONNECTION_STRING);
                 netStream.Write(writeData, 0, writeData.Length);
                 client.Close();
             }
