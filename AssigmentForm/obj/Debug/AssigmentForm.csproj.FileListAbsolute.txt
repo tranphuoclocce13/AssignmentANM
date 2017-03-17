@@ -1,0 +1,11 @@
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\bin\Debug\AssigmentForm.exe.config
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\bin\Debug\AssigmentForm.exe
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\bin\Debug\AssigmentForm.pdb
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.csprojResolveAssemblyReference.cache
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.Properties.Resources.resources
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.csproj.GenerateResource.Cache
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.exe
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.pdb
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.InputIPForm.resources
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.MainForm.resources
+D:\BK\Nam 4\Ky_2\C#_Project\AssigmentForm\AssigmentForm\obj\Debug\AssigmentForm.ChangePortForm.resources
