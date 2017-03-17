@@ -112,7 +112,8 @@ namespace AssigmentForm
                             }
                             else
                             {
-                                chatListener.AcceptTcpClient();
+                                client = chatListener.AcceptTcpClient();
+                                client.Close();
                                 setStatus("Waiting...");
                             }
                         }
@@ -141,7 +142,7 @@ namespace AssigmentForm
 
             if (receiveBytes > 0)
             {
-                string receiveMessage = Encoding.ASCII.GetString(receiveData);
+                string receiveMessage = Encoding.Unicode.GetString(receiveData);
                 if (receiveMessage.Substring(0,receiveBytes) == "DISCONNECTPLEASE12345")
                 {
                     client.Close();
@@ -161,7 +162,7 @@ namespace AssigmentForm
             {
                 if (writeMessage.Length > 0)
                 {
-                    byte[] writeData = Encoding.ASCII.GetBytes(writeMessage);
+                    byte[] writeData = Encoding.Unicode.GetBytes(writeMessage);
                     netStream.Write(writeData, 0, writeMessage.Length);
                     writeMessage = "You: " + writeMessage;
                     addTextView(writeMessage);
@@ -216,6 +217,7 @@ namespace AssigmentForm
 /*Method handle connecting to Server to chat and send File*/
         public void sendTCP()
         {
+            TcpClient client = null;
             try
             {
                 client = new TcpClient(IPConnect, portConnect);
@@ -363,7 +365,6 @@ namespace AssigmentForm
                 transferServerThread.IsBackground = true;
                 transferServerThread.Start();
             }
-
             changePort.Dispose();
         }
 
