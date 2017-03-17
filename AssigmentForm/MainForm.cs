@@ -45,6 +45,9 @@ namespace AssigmentForm
             transferServerThread.IsBackground = true;
             transferServerThread.Start();
             /*Set T is Back Ground to Terminal Program when Press X button*/
+
+            string ipAddress = Dns.GetHostByName(Dns.GetHostName()).AddressList[0].ToString();
+            addTextView("Server started, IP Server = " + ipAddress);
         }
 
         public void startTransferServer()
@@ -55,8 +58,6 @@ namespace AssigmentForm
                 {
                     transferListener = new TcpListener(IPAddress.Any, transferPort);
                     transferListener.Start();
-                    string ipAddress = Dns.GetHostByName(Dns.GetHostName()).AddressList[0].ToString();
-                    addTextView("Server started, IP Server = " +ipAddress);
                     break;
                 }
                 catch (Exception ex)
@@ -358,7 +359,7 @@ namespace AssigmentForm
                 addTextView(message);
 
                 transferServerThread.Abort();
-                transferServerThread = new Thread(startChatServer);
+                transferServerThread = new Thread(startTransferServer);
                 transferServerThread.IsBackground = true;
                 transferServerThread.Start();
             }
