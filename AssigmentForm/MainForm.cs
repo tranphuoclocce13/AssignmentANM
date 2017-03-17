@@ -143,7 +143,7 @@ namespace AssigmentForm
             if (receiveBytes > 0)
             {
                 string receiveMessage = Encoding.UTF8.GetString(receiveData);
-                if (receiveMessage.Substring(0,receiveBytes) == "DISCONNECTPLEASE12345")
+                if (receiveMessage == "DISCONNECTPLEASE12345")
                 {
                     client.Close();
                     return;
@@ -217,7 +217,7 @@ namespace AssigmentForm
         }
 
 /*Method handle connecting to Server to chat and send File*/
-        public void sendTCP()
+        public void connectToChatServer()
         {
             TcpClient client = null;
             try
@@ -245,7 +245,7 @@ namespace AssigmentForm
             {
                 Console.WriteLine(ex.Message);
                 announceDisconnect();
-                chatClientThread.Abort();
+                client.Close();
                 return;
             }
         }
@@ -266,7 +266,7 @@ namespace AssigmentForm
                 return;
             }
 
-            chatClientThread = new Thread(sendTCP);
+            chatClientThread = new Thread(connectToChatServer);
             chatClientThread.IsBackground = true;
             chatClientThread.Start();
         }
