@@ -43,6 +43,7 @@ namespace AssigmentForm
             chatServerThread.Start();
 
             transferServerThread = new Thread(startTransferServer);
+            transferServerThread.SetApartmentState(ApartmentState.STA);
             transferServerThread.IsBackground = true;
             transferServerThread.Start();
             /*Set T is Back Ground to Terminal Program when Press X button*/
@@ -53,6 +54,9 @@ namespace AssigmentForm
 
         public void startTransferServer()
         {
+            TcpClient client = null;
+            NetworkStream netstream = null;
+
             while (true)
             {
                 try
@@ -67,7 +71,60 @@ namespace AssigmentForm
                     transferPort += 1;
                 }
             }
+
+            try
+            {
+                client = transferListener.AcceptTcpClient();
+                netstream = client.GetStream();
+
+                byte[] recData = new byte[BUFFER_SIZE];
+                int recBytes;
+                string saveFileName = string.Empty;
+                string fileName = string.Empty;
+
+                recBytes = netstream.Read(recData, 0, BUFFER_SIZE);
+                fileName = Encoding.ASCII.GetString(recData);
+                netstream.Write(recData, 0, recData.Length);
+
+                string message = "Accept Incoming File: " + fileName;
+                DialogResult result = MessageBox.Show(message, "Incoming File", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                if (result == System.Windows.Forms.DialogResult.Yes)
+                {
+                    SaveFileDialog dialogSave = new SaveFileDialog();
+
+                    dialogSave.Filter = "All files (*.*)|*.*";
+                    dialogSave.RestoreDirectory = true;
+                    dialogSave.Title = "Where do you want to save the file?";
+                    dialogSave.InitialDirectory = @"C:/";
+                    dialogSave.FileName = fileName;
+
+                    if (dialogSave.ShowDialog() == DialogResult.OK)
+                        saveFileName = dialogSave.FileName;
+
+                    if (saveFileName != string.Empty)
+                    {
+                        int totalrecbytes = 0;
+                        FileStream Fs = new FileStream(saveFileName, FileMode.OpenOrCreate, FileAccess.Write);
+                        while ((recBytes = netstream.Read(recData, 0, recData.Length)) > 0)
+                        {
+                            Fs.Write(recData, 0, recBytes);
+                            totalrecbytes += recBytes;
+                            if (recBytes < BUFFER_SIZE) break;
+                        }
+                        Fs.Close();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                netstream.Close();
+                client.Close();
+                addTextView("Transfer File Done");
+            }
         }
+
 /*Method for Thread Call*/
         public void startChatServer()
         {
@@ -329,7 +386,10 @@ namespace AssigmentForm
 /*Method handle transfer file without encryption*/
         private void nornalToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            
+            chatClientThread = new Thread(connectToTransferServer);
+            chatClientThread.IsBackground = true;
+            chatClientThread.SetApartmentState(ApartmentState.STA);
+            chatClientThread.Start();
         }
 
         private void chatPortToolStripMenuItem_Click(object sender, EventArgs e)
@@ -373,5 +433,73 @@ namespace AssigmentForm
             changePort.Dispose();
         }
 
+        private void clearTextToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            tbView.Text = "";
+        }
+
+        public void connectToTransferServer()
+        {
+            TcpClient clientTransfer = null;
+            NetworkStream netstream = null;
+            byte[] sendingBuffer = null;
+
+            try
+            {
+                string sendingFilePath = string.Empty;
+                string fileName = string.Empty;
+                OpenFileDialog openFile = new OpenFileDialog();
+                openFile.Filter = "All Files (*.*)|*.*";
+                openFile.CheckFileExists = true;
+                openFile.Title = "Choose a File";
+                openFile.InitialDirectory = @"C:\";
+                if (openFile.ShowDialog() == DialogResult.OK)
+                {
+                    sendingFilePath = openFile.FileName;
+                    fileName = openFile.SafeFileName;
+
+                }
+
+                if (sendingFilePath != string.Empty)
+                {
+                    clientTransfer = new TcpClient(IPConnect, transferPort);
+
+                    netstream = clientTransfer.GetStream();
+                    //send file name to receiver
+                    sendingBuffer = new byte[fileName.Length];
+                    sendingBuffer = Encoding.ASCII.GetBytes(fileName);
+                    netstream.Write(sendingBuffer, 0, sendingBuffer.Length);
+                    netstream.Read(sendingBuffer, 0, sendingBuffer.Length);
+
+                    FileStream Fs = new FileStream(sendingFilePath, FileMode.Open, FileAccess.Read);
+
+                    int NoOfPackets = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(Fs.Length) / Convert.ToDouble(BUFFER_SIZE)));
+
+                    int TotalLength = (int)Fs.Length, CurrentPacketLength, counter = 0;
+                    for (int i = 0; i < NoOfPackets; i++)
+                    {
+                        if (TotalLength > BUFFER_SIZE)
+                        {
+                            CurrentPacketLength = BUFFER_SIZE;
+                            TotalLength = TotalLength - CurrentPacketLength;
+                        }
+                        else
+                            CurrentPacketLength = TotalLength;
+                        sendingBuffer = new byte[CurrentPacketLength];
+                        Fs.Read(sendingBuffer, 0, CurrentPacketLength);
+                        netstream.Write(sendingBuffer, 0, (int)sendingBuffer.Length);
+                    }
+
+                    addTextView("Transfer File Done");
+                    Fs.Close();
+                    netStream.Close();
+                    clientTransfer.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
     }
 }
