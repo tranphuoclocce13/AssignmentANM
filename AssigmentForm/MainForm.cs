@@ -22,13 +22,16 @@ namespace AssigmentForm
         private Thread transferClientThread = null;
         private const int BUFFER_SIZE = 1024;
         private const string END_CONNECTION_STRING = "DISCONNECTPLEASE12345";
+        private string yourIPAddress = string.Empty;
+        private string partnerIPAddress = string.Empty;
         private int serverPort = 19999;
         private int transferPort = 29999;
         private string IPConnect = null;
         private int portConnect = 0;
         private TcpListener chatListener = null;
         private TcpListener transferListener = null;
-        private TcpClient client = null;
+        private TcpClient clientChat = null;
+        private TcpClient clientTransfer = null;
         private NetworkStream netStream = null;
 
         public MainForm()
@@ -48,13 +51,12 @@ namespace AssigmentForm
             transferServerThread.Start();
             /*Set T is Back Ground to Terminal Program when Press X button*/
 
-            string ipAddress = Dns.GetHostByName(Dns.GetHostName()).AddressList[0].ToString();
-            this.Text += " - " + ipAddress;
+            yourIPAddress = Dns.GetHostByName(Dns.GetHostName()).AddressList[0].ToString();
+            this.Text += " - " + yourIPAddress;
         }
 
         public void startTransferServer()
         {
-            TcpClient client = null;
             NetworkStream netstream = null;
 
             while (true)
@@ -72,57 +74,60 @@ namespace AssigmentForm
                 }
             }
 
-            try
+            while (true)
             {
-                client = transferListener.AcceptTcpClient();
-                netstream = client.GetStream();
-
-                byte[] recData = new byte[BUFFER_SIZE];
-                int recBytes;
-                string saveFileName = string.Empty;
-                string fileName = string.Empty;
-
-                recBytes = netstream.Read(recData, 0, BUFFER_SIZE);
-                fileName = Encoding.ASCII.GetString(recData);
-                netstream.Write(recData, 0, recData.Length);
-
-                string message = "Accept Incoming File: " + fileName;
-                DialogResult result = MessageBox.Show(message, "Incoming File", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (result == System.Windows.Forms.DialogResult.Yes)
+                try
                 {
-                    SaveFileDialog dialogSave = new SaveFileDialog();
+                    clientTransfer = transferListener.AcceptTcpClient();
+                    netstream = clientTransfer.GetStream();
 
-                    dialogSave.Filter = "All files (*.*)|*.*";
-                    dialogSave.RestoreDirectory = true;
-                    dialogSave.Title = "Where do you want to save the file?";
-                    dialogSave.InitialDirectory = @"C:/";
-                    dialogSave.FileName = fileName;
+                    byte[] recData = new byte[BUFFER_SIZE];
+                    int recBytes;
+                    string saveFileName = string.Empty;
+                    string fileName = string.Empty;
 
-                    if (dialogSave.ShowDialog() == DialogResult.OK)
-                        saveFileName = dialogSave.FileName;
+                    recBytes = netstream.Read(recData, 0, BUFFER_SIZE);
+                    fileName = Encoding.ASCII.GetString(recData);
+                    netstream.Write(recData, 0, recBytes);
 
-                    if (saveFileName != string.Empty)
+                    string message = "Accept Incoming File: " + fileName;
+                    DialogResult result = MessageBox.Show(message, "Incoming File", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+                    if (result == System.Windows.Forms.DialogResult.Yes)
                     {
-                        int totalrecbytes = 0;
-                        FileStream Fs = new FileStream(saveFileName, FileMode.OpenOrCreate, FileAccess.Write);
-                        while ((recBytes = netstream.Read(recData, 0, recData.Length)) > 0)
+                        SaveFileDialog dialogSave = new SaveFileDialog();
+
+                        dialogSave.Filter = "All files (*.*)|*.*";
+                        dialogSave.RestoreDirectory = true;
+                        dialogSave.Title = "Where do you want to save the file?";
+                        dialogSave.InitialDirectory = @"C:/";
+                        dialogSave.FileName = fileName;
+
+                        if (dialogSave.ShowDialog() == DialogResult.OK)
+                            saveFileName = dialogSave.FileName;
+
+                        if (saveFileName != string.Empty)
                         {
-                            Fs.Write(recData, 0, recBytes);
-                            totalrecbytes += recBytes;
-                            if (recBytes < BUFFER_SIZE) break;
+                            int totalrecbytes = 0;
+                            FileStream Fs = new FileStream(saveFileName, FileMode.OpenOrCreate, FileAccess.Write);
+                            while ((recBytes = netstream.Read(recData, 0, recData.Length)) > 0)
+                            {
+                                Fs.Write(recData, 0, recBytes);
+                                totalrecbytes += recBytes;
+                                if (recBytes < BUFFER_SIZE) break;
+                            }
+                            Fs.Close();
+                            addTextView("Transfer File Done");
+                            clientTransfer.Close();
                         }
-                        Fs.Close();
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex.Message);
-                netstream.Close();
-                client.Close();
-                addTextView("Transfer File Done");
-            }
+                catch (Exception ex)
+                {
+                    addTextView(ex.Message);
+                    clientTransfer.Close();
+                }
+            }      
         }
 
 /*Method for Thread Call*/
@@ -158,11 +163,16 @@ namespace AssigmentForm
                         {
                             if (result == System.Windows.Forms.DialogResult.Yes)
                             {
-                                client = chatListener.AcceptTcpClient();
+                                clientChat = chatListener.AcceptTcpClient();
+                                netStream = clientChat.GetStream();
+                                //receive IP of Partner
+                                byte[] receiveData = new byte[BUFFER_SIZE];
+                                int receiveBytes = netStream.Read(receiveData, 0, BUFFER_SIZE);
+                                partnerIPAddress = Encoding.ASCII.GetString(receiveData);
 
                                 setStatus("Connected");
 
-                                netStream = client.GetStream();
+                                
                                 while (true)
                                 {
                                     receivingData();
@@ -170,8 +180,8 @@ namespace AssigmentForm
                             }
                             else
                             {
-                                client = chatListener.AcceptTcpClient();
-                                client.Close();
+                                clientChat = chatListener.AcceptTcpClient();
+                                clientChat.Close();
                                 setStatus("Waiting...");
                             }
                         }
@@ -203,7 +213,7 @@ namespace AssigmentForm
                 string receiveMessage = Encoding.UTF8.GetString(receiveData);
                 if (receiveMessage.Substring(0, END_CONNECTION_STRING.Length) == END_CONNECTION_STRING)
                 {
-                    client.Close();
+                    clientChat.Close();
                     return;
                 }
                 
@@ -294,6 +304,9 @@ namespace AssigmentForm
             {
                 setStatus("Connected");
                 netStream = client.GetStream();
+                byte[] writeData = Encoding.UTF8.GetBytes(yourIPAddress);
+                netStream.Write(writeData, 0, writeData.Length);
+
                 while (true)
                 {
                     receivingData();
@@ -359,7 +372,7 @@ namespace AssigmentForm
             {
                 byte[] writeData = Encoding.ASCII.GetBytes(END_CONNECTION_STRING);
                 netStream.Write(writeData, 0, writeData.Length);
-                client.Close();
+                clientChat.Close();
             }
             catch (Exception ex)
             {
@@ -386,10 +399,10 @@ namespace AssigmentForm
 /*Method handle transfer file without encryption*/
         private void nornalToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            chatClientThread = new Thread(connectToTransferServer);
-            chatClientThread.IsBackground = true;
-            chatClientThread.SetApartmentState(ApartmentState.STA);
-            chatClientThread.Start();
+            transferClientThread = new Thread(connectToTransferServer);
+            transferClientThread.IsBackground = true;
+            transferClientThread.SetApartmentState(ApartmentState.STA);
+            transferClientThread.Start();
         }
 
         private void chatPortToolStripMenuItem_Click(object sender, EventArgs e)
@@ -440,7 +453,6 @@ namespace AssigmentForm
 
         public void connectToTransferServer()
         {
-            TcpClient clientTransfer = null;
             NetworkStream netstream = null;
             byte[] sendingBuffer = null;
 
@@ -462,7 +474,7 @@ namespace AssigmentForm
 
                 if (sendingFilePath != string.Empty)
                 {
-                    clientTransfer = new TcpClient(IPConnect, transferPort);
+                    clientTransfer = new TcpClient(IPConnect, 29999);
 
                     netstream = clientTransfer.GetStream();
                     //send file name to receiver
@@ -475,8 +487,8 @@ namespace AssigmentForm
 
                     int NoOfPackets = Convert.ToInt32(Math.Ceiling(Convert.ToDouble(Fs.Length) / Convert.ToDouble(BUFFER_SIZE)));
 
-                    int TotalLength = (int)Fs.Length, CurrentPacketLength, counter = 0;
-                    for (int i = 0; i < NoOfPackets; i++)
+                    int TotalLength = (int)Fs.Length, CurrentPacketLength;
+                    while (TotalLength > 0) 
                     {
                         if (TotalLength > BUFFER_SIZE)
                         {
@@ -484,21 +496,23 @@ namespace AssigmentForm
                             TotalLength = TotalLength - CurrentPacketLength;
                         }
                         else
+                        {
                             CurrentPacketLength = TotalLength;
-                        sendingBuffer = new byte[CurrentPacketLength];
-                        Fs.Read(sendingBuffer, 0, CurrentPacketLength);
-                        netstream.Write(sendingBuffer, 0, (int)sendingBuffer.Length);
+                            TotalLength = 0;
+                        }
+                            sendingBuffer = new byte[CurrentPacketLength];
+                            Fs.Read(sendingBuffer, 0, CurrentPacketLength);
+                            netstream.Write(sendingBuffer, 0, (int)sendingBuffer.Length);
                     }
 
                     addTextView("Transfer File Done");
                     Fs.Close();
-                    netStream.Close();
                     clientTransfer.Close();
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                addTextView(ex.Message);
             }
         }
     }
