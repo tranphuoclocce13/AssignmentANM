@@ -220,3 +220,10 @@ AssigmentForm/bin/Debug/AssigmentForm.pdb
 *.exe
 *.pdb
 *.Cache
+AssigmentForm/bin/Debug/AssigmentForm.pdb
+*.exe
+AssigmentForm/bin/Debug/AssigmentForm.vshost.exe
+AssigmentForm/obj/Debug/AssigmentForm.csproj.FileListAbsolute.txt
+*.Cache
+AssigmentForm/obj/Debug/AssigmentForm.exe
+*.pdb

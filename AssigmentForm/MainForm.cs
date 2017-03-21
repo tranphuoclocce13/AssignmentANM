@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Security.Cryptography;
 
 namespace AssigmentForm
 {
@@ -28,11 +29,17 @@ namespace AssigmentForm
         private int transferPort = 29999;
         private string IPConnect = null;
         private int portConnect = 0;
+        private byte[] AESKey;
         private TcpListener chatListener = null;
         private TcpListener transferListener = null;
         private TcpClient clientChat = null;
         private TcpClient clientTransfer = null;
         private NetworkStream netStream = null;
+
+        private AES aes;
+        private byte[] plainTextBlock = new byte[16];
+        private byte[] cipherTextBlock = new byte[16];
+
 
         public MainForm()
         {
@@ -165,13 +172,26 @@ namespace AssigmentForm
                             {
                                 clientChat = chatListener.AcceptTcpClient();
                                 netStream = clientChat.GetStream();
+
+                                AESKey = genKey(yourIPAddress, 16);
+                                aes = new AES(0, AESKey);
+
                                 //receive IP of Partner
                                 byte[] receiveData = new byte[BUFFER_SIZE];
+                                byte[] plainData = new byte[BUFFER_SIZE];
+
                                 int receiveBytes = netStream.Read(receiveData, 0, BUFFER_SIZE);
-                                partnerIPAddress = Encoding.ASCII.GetString(receiveData);
 
-                                setStatus("Connected");
+                                for (int i = 0; i < BUFFER_SIZE; i += 16)
+                                {
+                                    Array.Copy(receiveData, i, cipherTextBlock, 0, 16);                                  
+                                    aes.decyptOneBLock(cipherTextBlock, plainTextBlock);
+                                    Array.Copy(plainTextBlock, 0, plainData, i, 16);
+                                }
 
+                                partnerIPAddress = Encoding.ASCII.GetString(plainData);
+
+                                setStatus("Connected");                                
                                 
                                 while (true)
                                 {
@@ -190,7 +210,6 @@ namespace AssigmentForm
                             Console.WriteLine(ex.Message);
                             announceDisconnect();
                         }
-
                     }
                 }
                 catch (Exception ex)
@@ -201,7 +220,6 @@ namespace AssigmentForm
             }  
         }
 
-
 /*Method handle receiving data from Partner and write it to Form*/
         private void receivingData()
         {
@@ -210,7 +228,17 @@ namespace AssigmentForm
 
             if (receiveBytes > 0)
             {
-                string receiveMessage = Encoding.UTF8.GetString(receiveData);
+                byte[] plainData = new byte[BUFFER_SIZE];
+
+                for (int i = 0; i < BUFFER_SIZE; i += 16)
+                {
+                    Array.Copy(receiveData, i, cipherTextBlock, 0, 16);
+                    aes.decyptOneBLock(cipherTextBlock, plainTextBlock);
+                    Array.Copy(plainTextBlock, 0, plainData, i, 16);
+                }
+
+                string receiveMessage = Encoding.UTF8.GetString(plainData);
+
                 if (receiveMessage.Substring(0, END_CONNECTION_STRING.Length) == END_CONNECTION_STRING)
                 {
                     clientChat.Close();
@@ -233,7 +261,27 @@ namespace AssigmentForm
                 {
                     byte[] writeData = Encoding.UTF8.GetBytes(writeMessage);
                     int sendingSize = (writeData.Length > BUFFER_SIZE) ? BUFFER_SIZE : writeData.Length;
-                    netStream.Write(writeData, 0, sendingSize);
+
+                    byte[] cipherData = expandCipherData(sendingSize);
+
+                    int redundant = cipherData.Length - sendingSize;
+
+                    for (int i = 0; i < cipherData.Length; i += 16)
+                    {
+                        Array.Clear(plainTextBlock, 0, 16);
+
+                        if (i != (cipherData.Length - 16))
+                            Array.Copy(writeData, i, plainTextBlock, 0, 16);
+                        else
+                            Array.Copy(writeData, i, plainTextBlock, 0, 16 - redundant);
+
+                        aes.encyptOneBLock(plainTextBlock, cipherTextBlock);
+
+                        Array.Copy(cipherTextBlock, 0, cipherData, i, 16);
+                    }
+
+                    netStream.Write(cipherData, 0, cipherData.Length);
+
                     writeMessage = "You: " + writeMessage;
                     addTextView(writeMessage);
                     tbMessage.Clear();
@@ -304,8 +352,30 @@ namespace AssigmentForm
             {
                 setStatus("Connected");
                 netStream = client.GetStream();
+
+                AESKey = genKey(IPConnect, 16);
+                aes = new AES(0, AESKey);
+                             
                 byte[] writeData = Encoding.UTF8.GetBytes(yourIPAddress);
-                netStream.Write(writeData, 0, writeData.Length);
+                byte[] cipherData = expandCipherData(writeData.Length);
+
+                int redundant = cipherData.Length - writeData.Length;
+
+                for (int i = 0; i < cipherData.Length; i+=16)
+                {
+                    Array.Clear(plainTextBlock, 0, 16);
+
+                    if (i != (cipherData.Length - 16))
+                        Array.Copy(writeData, i, plainTextBlock, 0, 16);
+                    else
+                        Array.Copy(writeData, i, plainTextBlock, 0, 16 - redundant);
+
+                    aes.encyptOneBLock(plainTextBlock, cipherTextBlock);
+
+                    Array.Copy(cipherTextBlock, 0, cipherData, i, 16);
+                }
+
+                    netStream.Write(cipherData, 0, cipherData.Length);
 
                 while (true)
                 {
@@ -514,6 +584,27 @@ namespace AssigmentForm
             {
                 addTextView(ex.Message);
             }
+        }
+
+/*Methods handle AES encypt/decrypt operation*/
+        private byte[] genKey(string password, int keyBytes)
+        {
+            const int Iterations = 300;
+            var keyGenerator = new Rfc2898DeriveBytes(password, Salt, Iterations);
+            return keyGenerator.GetBytes(keyBytes);
+        }
+
+        private static readonly byte[] Salt = new byte[] { 10, 20, 30, 40, 50, 60, 70, 80 };
+
+        private byte[] expandCipherData (int writeDataLength)
+        {
+            byte[] cipherData;
+            if ((writeDataLength) % 16 != 0)
+                cipherData = new byte[16 * ((writeDataLength / 16) + 1)];
+            else
+                cipherData = new byte[writeDataLength];
+
+            return cipherData;
         }
     }
 }
